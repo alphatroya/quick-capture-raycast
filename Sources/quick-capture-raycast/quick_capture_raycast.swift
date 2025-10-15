@@ -43,9 +43,13 @@ func main() {
         let lineToAppend = "- **\(timeString)** \(input)\n"
 
         if fileManager.fileExists(atPath: filePath) {
+            let currentContent = try String(contentsOfFile: filePath, encoding: .utf8)
+            let needsNewline = !currentContent.hasSuffix("\n")
+            let contentToAppend = needsNewline ? "\n" + lineToAppend : lineToAppend
+
             let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath))
             fileHandle.seekToEndOfFile()
-            fileHandle.write(lineToAppend.data(using: .utf8)!)
+            fileHandle.write(contentToAppend.data(using: .utf8)!)
             fileHandle.closeFile()
         } else {
             try lineToAppend.write(toFile: filePath, atomically: true, encoding: .utf8)
