@@ -7,53 +7,72 @@
 
 // Optional parameters:
 // @raycast.icon 📝
-// @raycast.argument1 { "type": "text", "placeholder": "What's on your mind?" }
+// @raycast.argument1 { "type": "text", "optional": true, "placeholder": "What's on your mind?" }
 
+import AppKit
 import Foundation
+
+func getClipboardContent() -> String? {
+    let pasteboard = NSPasteboard.general
+    return pasteboard.string(forType: .string)
+}
+
+func formatDate(_ format: String) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = format
+    return formatter.string(from: Date())
+}
+
+func ensureDirectoryExists(at path: String) throws {
+    let fileManager = FileManager.default
+    if !fileManager.fileExists(atPath: path) {
+        try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+    }
+}
+
+func appendToJournalFile(at filePath: String, content: String) throws {
+    let fileManager = FileManager.default
+
+    if fileManager.fileExists(atPath: filePath) {
+        let currentContent = try String(contentsOfFile: filePath, encoding: .utf8)
+        let needsNewline = !currentContent.hasSuffix("\n")
+        let contentToAppend = needsNewline ? "\n" + content : content
+
+        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath))
+        fileHandle.seekToEndOfFile()
+        fileHandle.write(contentToAppend.data(using: .utf8)!)
+        fileHandle.closeFile()
+    } else {
+        try content.write(toFile: filePath, atomically: true, encoding: .utf8)
+    }
+}
 
 func main() {
     let arguments = CommandLine.arguments
+    var input: String
 
-    guard arguments.count > 1 else {
-        print("Error: No input provided")
+    if arguments.count > 1, !arguments[1].isEmpty {
+        input = arguments[1]
+    } else if let clipboardContent = getClipboardContent(), !clipboardContent.isEmpty {
+        input = clipboardContent
+    } else {
+        print("Error: No input provided and clipboard is empty")
         exit(1)
     }
-    let input = arguments[1]
 
     let knowledgeBase = "/Volumes/Logseq"
-
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy_MM_dd"
-    let today = formatter.string(from: Date())
+    let today = formatDate("yyyy_MM_dd")
     let fileName = "\(today).md"
     let journalsPath = (knowledgeBase as NSString).appendingPathComponent("journals")
     let filePath = (journalsPath as NSString).appendingPathComponent(fileName)
 
     do {
-        let fileManager = FileManager.default
+        try ensureDirectoryExists(at: journalsPath)
 
-        if !fileManager.fileExists(atPath: journalsPath) {
-            try fileManager.createDirectory(atPath: journalsPath, withIntermediateDirectories: true, attributes: nil)
-        }
-
-        let timestamp = DateFormatter()
-        timestamp.dateFormat = "HH:mm"
-        let timeString = timestamp.string(from: Date())
-
+        let timeString = formatDate("HH:mm")
         let lineToAppend = "- **\(timeString)** \(input)\n"
 
-        if fileManager.fileExists(atPath: filePath) {
-            let currentContent = try String(contentsOfFile: filePath, encoding: .utf8)
-            let needsNewline = !currentContent.hasSuffix("\n")
-            let contentToAppend = needsNewline ? "\n" + lineToAppend : lineToAppend
-
-            let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath))
-            fileHandle.seekToEndOfFile()
-            fileHandle.write(contentToAppend.data(using: .utf8)!)
-            fileHandle.closeFile()
-        } else {
-            try lineToAppend.write(toFile: filePath, atomically: true, encoding: .utf8)
-        }
+        try appendToJournalFile(at: filePath, content: lineToAppend)
 
         print("Successfully added to journal: \(filePath)")
     } catch {
