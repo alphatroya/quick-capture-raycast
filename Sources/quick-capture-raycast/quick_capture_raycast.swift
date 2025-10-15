@@ -2,12 +2,12 @@
 
 // Required parameters:
 // @raycast.schemaVersion 1
-// @raycast.title Quick capture
+// @raycast.title Journal Entry
 // @raycast.mode compact
 
 // Optional parameters:
-// @raycast.icon 🤖
-// @raycast.argument1 { "type": "text", "placeholder": "from city" }
+// @raycast.icon 📝
+// @raycast.argument1 { "type": "text", "placeholder": "What's on your mind?" }
 
 import Foundation
 
