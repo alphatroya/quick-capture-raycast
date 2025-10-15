@@ -20,11 +20,7 @@ func main() {
     }
     let input = arguments[1]
 
-    guard let homeDir = ProcessInfo.processInfo.environment["HOME"] else {
-        print("Error: HOME environment variable not set")
-        exit(1)
-    }
-    let knowledgeBase = (homeDir as NSString).appendingPathComponent("Downloads")
+    let knowledgeBase = "/Volumes/Logseq"
 
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy_MM_dd"
