@@ -23,6 +23,18 @@ func formatDate(_ format: String) -> String {
     return formatter.string(from: Date())
 }
 
+func getKnowledgeBasePath() -> String? {
+    let homePath = ProcessInfo.processInfo.environment["HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.path
+    let configPath = (homePath as NSString).appendingPathComponent(".config/raycast/knowledge-base")
+
+    do {
+        return try String(contentsOfFile: configPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+    } catch {
+        print("Warning: Could not read knowledge base path from \(configPath): \(error)")
+        return nil
+    }
+}
+
 func ensureDirectoryExists(at path: String) throws {
     let fileManager = FileManager.default
     if !fileManager.fileExists(atPath: path) {
@@ -60,7 +72,10 @@ func main() {
         exit(1)
     }
 
-    let knowledgeBase = "/Volumes/Logseq"
+    guard let knowledgeBase = getKnowledgeBasePath() else {
+        print("Error: Could not determine knowledge base path")
+        exit(1)
+    }
     let today = formatDate("yyyy_MM_dd")
     let fileName = "\(today).md"
     let journalsPath = (knowledgeBase as NSString).appendingPathComponent("journals")
