@@ -85,7 +85,7 @@ func main() {
         try ensureDirectoryExists(at: journalsPath)
 
         let timeString = formatDate("HH:mm")
-        let lineToAppend = "- **\(timeString)** \(input)\n"
+        let lineToAppend = "- TODO **\(timeString)** \(input)\n"
 
         try appendToJournalFile(at: filePath, content: lineToAppend)
 
