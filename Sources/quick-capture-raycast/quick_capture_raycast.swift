@@ -12,14 +12,18 @@
 import AppKit
 import Foundation
 
+// MARK: - PasteboardProtocol
+
 protocol PasteboardProtocol {
     func string(forType dataType: NSPasteboard.PasteboardType) -> String?
 }
 
+// MARK: - NSPasteboard + PasteboardProtocol
+
 extension NSPasteboard: PasteboardProtocol {}
 
 func getClipboardContent(pasteboard: PasteboardProtocol = NSPasteboard.general) -> String? {
-    return pasteboard.string(forType: .string)
+    pasteboard.string(forType: .string)
 }
 
 func formatDate(_ format: String, date: Date = Date()) -> String {
@@ -81,6 +85,7 @@ func main() {
         print("Error: Could not determine knowledge base path")
         exit(1)
     }
+
     let today = formatDate("yyyy_MM_dd")
     let fileName = "\(today).md"
     let journalsPath = (knowledgeBase as NSString).appendingPathComponent("journals")

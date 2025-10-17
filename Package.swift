@@ -9,11 +9,11 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .executableTarget(
-            name: "quick-capture-raycast"
+            name: "quick-capture-raycast",
         ),
         .testTarget(
             name: "quick-capture-raycastTests",
-            dependencies: ["quick-capture-raycast"]
+            dependencies: ["quick-capture-raycast"],
         ),
-    ]
+    ],
 )

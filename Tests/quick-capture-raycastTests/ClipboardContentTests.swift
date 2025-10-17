@@ -2,10 +2,16 @@ import AppKit
 @testable import quick_capture_raycast
 import Testing
 
+// MARK: - MockPasteboard
+
 // Mock PasteboardProtocol for testing
 class MockPasteboard: PasteboardProtocol {
+    // MARK: Properties
+
     var mockString: String?
     var shouldReturnNil = false
+
+    // MARK: Functions
 
     func string(forType _: NSPasteboard.PasteboardType) -> String? {
         if shouldReturnNil {
@@ -14,6 +20,8 @@ class MockPasteboard: PasteboardProtocol {
         return mockString
     }
 }
+
+// MARK: - ClipboardContentTests
 
 @Suite("Clipboard Content Tests")
 struct ClipboardContentTests {
