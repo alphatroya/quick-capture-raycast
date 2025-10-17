@@ -17,17 +17,17 @@ import Foundation
 struct PasteboardReader: Sendable {
     // MARK: Static Properties
 
-    static let system: PasteboardReader = .init(string: {
+    static let system: PasteboardReader = .init {
         NSPasteboard.general.string(forType: .string)
-    })
+    }
 
     // MARK: Properties
 
-    var string: @Sendable () -> String?
+    var read: @Sendable () -> String?
 }
 
 func getClipboardContent(pasteboard: PasteboardReader = .system) -> String? {
-    pasteboard.string()
+    pasteboard.read()
 }
 
 func formatDate(_ format: String, date: Date = Date()) -> String {
