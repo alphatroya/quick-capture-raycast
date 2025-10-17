@@ -12,6 +12,41 @@
 import AppKit
 import Foundation
 
+// MARK: - FileWorker
+
+struct FileWorker: Sendable {
+    // MARK: Static Properties
+
+    static let system: FileWorker = .init()
+
+    // MARK: Properties
+
+    var homeDirectoryPath: @Sendable () -> String = {
+        ProcessInfo.processInfo.environment["HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.path
+    }
+
+    var fileExistsAtPath: @Sendable (String) -> Bool = {
+        FileManager.default.fileExists(atPath: $0)
+    }
+
+    var createDirectoryAtPath: @Sendable (String, Bool, [FileAttributeKey: Any]?) throws
+        -> Void = { path, createIntermediates, attributes in
+            try FileManager.default.createDirectory(
+                atPath: path,
+                withIntermediateDirectories: createIntermediates,
+                attributes: attributes,
+            )
+        }
+
+    var contentsAtPath: @Sendable (String) throws -> String? = { path in
+        try String(contentsOfFile: path, encoding: .utf8)
+    }
+
+    var writeStringToFile: @Sendable (String, String, Bool, String.Encoding) throws -> Void = { content, path, atomically, encoding in
+        try content.write(toFile: path, atomically: atomically, encoding: encoding)
+    }
+}
+
 // MARK: - PasteboardReader
 
 struct PasteboardReader: Sendable {
@@ -36,30 +71,27 @@ func formatDate(_ format: String, date: Date = Date()) -> String {
     return formatter.string(from: date)
 }
 
-func getKnowledgeBasePath() -> String? {
-    let homePath = ProcessInfo.processInfo.environment["HOME"] ?? FileManager.default.homeDirectoryForCurrentUser.path
+func getKnowledgeBasePath(fileManager: FileWorker = .system) -> String? {
+    let homePath = fileManager.homeDirectoryPath()
     let configPath = (homePath as NSString).appendingPathComponent(".config/raycast/knowledge-base")
 
     do {
-        return try String(contentsOfFile: configPath, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+        return try fileManager.contentsAtPath(configPath)?.trimmingCharacters(in: .whitespacesAndNewlines)
     } catch {
         print("Warning: Could not read knowledge base path from \(configPath): \(error)")
         return nil
     }
 }
 
-func ensureDirectoryExists(at path: String) throws {
-    let fileManager = FileManager.default
-    if !fileManager.fileExists(atPath: path) {
-        try fileManager.createDirectory(atPath: path, withIntermediateDirectories: true, attributes: nil)
+func ensureDirectoryExists(at path: String, fileManager: FileWorker = .system) throws {
+    if !fileManager.fileExistsAtPath(path) {
+        try fileManager.createDirectoryAtPath(path, true, nil)
     }
 }
 
-func appendToJournalFile(at filePath: String, content: String) throws {
-    let fileManager = FileManager.default
-
-    if fileManager.fileExists(atPath: filePath) {
-        let currentContent = try String(contentsOfFile: filePath, encoding: .utf8)
+func appendToJournalFile(at filePath: String, content: String, fileManager: FileWorker = .system) throws {
+    if fileManager.fileExistsAtPath(filePath) {
+        let currentContent = try fileManager.contentsAtPath(filePath) ?? ""
         let needsNewline = !currentContent.hasSuffix("\n")
         let contentToAppend = needsNewline ? "\n" + content : content
 
@@ -68,7 +100,7 @@ func appendToJournalFile(at filePath: String, content: String) throws {
         fileHandle.write(contentToAppend.data(using: .utf8)!)
         fileHandle.closeFile()
     } else {
-        try content.write(toFile: filePath, atomically: true, encoding: .utf8)
+        try fileManager.writeStringToFile(content, filePath, true, .utf8)
     }
 }
 

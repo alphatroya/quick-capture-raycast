@@ -2,17 +2,6 @@ import AppKit
 @testable import quick_capture_raycast
 import Testing
 
-extension PasteboardReader {
-    static func mock(_ string: String? = nil, returnsNil: Bool = false) -> PasteboardReader {
-        .init {
-            if returnsNil {
-                return nil
-            }
-            return string
-        }
-    }
-}
-
 // MARK: - ClipboardContentTests
 
 @Suite("Clipboard Content Tests")
