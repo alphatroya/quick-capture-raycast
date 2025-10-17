@@ -12,18 +12,22 @@
 import AppKit
 import Foundation
 
-// MARK: - PasteboardProtocol
+// MARK: - PasteboardReader
 
-protocol PasteboardProtocol {
-    func string(forType dataType: NSPasteboard.PasteboardType) -> String?
+struct PasteboardReader: Sendable {
+    // MARK: Static Properties
+
+    static let system: PasteboardReader = .init(string: {
+        NSPasteboard.general.string(forType: .string)
+    })
+
+    // MARK: Properties
+
+    var string: @Sendable () -> String?
 }
 
-// MARK: - NSPasteboard + PasteboardProtocol
-
-extension NSPasteboard: PasteboardProtocol {}
-
-func getClipboardContent(pasteboard: PasteboardProtocol = NSPasteboard.general) -> String? {
-    pasteboard.string(forType: .string)
+func getClipboardContent(pasteboard: PasteboardReader = .system) -> String? {
+    pasteboard.string()
 }
 
 func formatDate(_ format: String, date: Date = Date()) -> String {

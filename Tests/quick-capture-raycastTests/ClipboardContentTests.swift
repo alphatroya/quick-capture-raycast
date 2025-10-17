@@ -2,22 +2,14 @@ import AppKit
 @testable import quick_capture_raycast
 import Testing
 
-// MARK: - MockPasteboard
-
-// Mock PasteboardProtocol for testing
-class MockPasteboard: PasteboardProtocol {
-    // MARK: Properties
-
-    var mockString: String?
-    var shouldReturnNil = false
-
-    // MARK: Functions
-
-    func string(forType _: NSPasteboard.PasteboardType) -> String? {
-        if shouldReturnNil {
-            return nil
+extension PasteboardReader {
+    static func mock(_ string: String? = nil, returnsNil: Bool = false) -> PasteboardReader {
+        .init {
+            if returnsNil {
+                return nil
+            }
+            return string
         }
-        return mockString
     }
 }
 
@@ -27,8 +19,7 @@ class MockPasteboard: PasteboardProtocol {
 struct ClipboardContentTests {
     @Test("Returns text when clipboard contains text")
     func getClipboardContentWithText() {
-        let mockPasteboard = MockPasteboard()
-        mockPasteboard.mockString = "Hello, World!"
+        let mockPasteboard = PasteboardReader.mock("Hello, World!")
 
         let result = getClipboardContent(pasteboard: mockPasteboard)
 
@@ -37,8 +28,7 @@ struct ClipboardContentTests {
 
     @Test("Returns empty string when clipboard is empty")
     func getClipboardContentWithEmptyString() {
-        let mockPasteboard = MockPasteboard()
-        mockPasteboard.mockString = ""
+        let mockPasteboard = PasteboardReader.mock("")
 
         let result = getClipboardContent(pasteboard: mockPasteboard)
 
@@ -47,8 +37,7 @@ struct ClipboardContentTests {
 
     @Test("Returns nil when clipboard has no string content")
     func getClipboardContentWithNil() {
-        let mockPasteboard = MockPasteboard()
-        mockPasteboard.shouldReturnNil = true
+        let mockPasteboard = PasteboardReader.mock(returnsNil: true)
 
         let result = getClipboardContent(pasteboard: mockPasteboard)
 
