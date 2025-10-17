@@ -12,15 +12,20 @@
 import AppKit
 import Foundation
 
-func getClipboardContent() -> String? {
-    let pasteboard = NSPasteboard.general
+protocol PasteboardProtocol {
+    func string(forType dataType: NSPasteboard.PasteboardType) -> String?
+}
+
+extension NSPasteboard: PasteboardProtocol {}
+
+func getClipboardContent(pasteboard: PasteboardProtocol = NSPasteboard.general) -> String? {
     return pasteboard.string(forType: .string)
 }
 
-func formatDate(_ format: String) -> String {
+func formatDate(_ format: String, date: Date = Date()) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = format
-    return formatter.string(from: Date())
+    return formatter.string(from: date)
 }
 
 func getKnowledgeBasePath() -> String? {

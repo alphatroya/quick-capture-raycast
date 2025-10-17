@@ -11,5 +11,9 @@ let package = Package(
         .executableTarget(
             name: "quick-capture-raycast"
         ),
+        .testTarget(
+            name: "quick-capture-raycastTests",
+            dependencies: ["quick-capture-raycast"]
+        ),
     ]
 )
