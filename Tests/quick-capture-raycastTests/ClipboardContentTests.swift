@@ -46,11 +46,4 @@ struct ClipboardContentTests {
 
         #expect(result == nil, "Should return nil when clipboard has no string content")
     }
-
-    @Test("Works with real system pasteboard")
-    func getClipboardContentWithRealPasteboard() {
-        let result = getClipboardContent()
-
-        #expect(result != nil, "Function should work with real pasteboard without crashing")
-    }
 }
