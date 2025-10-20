@@ -31,12 +31,12 @@ struct AppendToJournalFileTests {
 
     @Test("Appends content to existing file without trailing newline")
     func appendsContentToFileWithoutTrailingNewline() async throws {
-        let result: Bool = try await withCheckedThrowingContinuation { continuation in
+        let result: String = try await withCheckedThrowingContinuation { continuation in
             let mockFileHandle = MockFileHandle(
                 onSeekToEndOfFile: { 0 },
                 onWrite: { data in
                     let writtenString = String(data: data, encoding: .utf8)
-                    continuation.resume(returning: writtenString == "\nNew content")
+                    continuation.resume(returning: writtenString!)
                 },
             )
 
@@ -53,17 +53,17 @@ struct AppendToJournalFileTests {
             }
         }
 
-        #expect(result == true, "Should append content with newline prefix when file has no trailing newline")
+        #expect(result == "\nNew content", "Should append content with newline prefix when file has no trailing newline")
     }
 
     @Test("Appends content to existing file with trailing newline")
     func appendsContentToFileWithTrailingNewline() async throws {
-        let result: Bool = try await withCheckedThrowingContinuation { continuation in
+        let result: String = try await withCheckedThrowingContinuation { continuation in
             let mockFileHandle = MockFileHandle(
                 onSeekToEndOfFile: { 0 },
                 onWrite: { data in
                     let writtenString = String(data: data, encoding: .utf8)
-                    continuation.resume(returning: writtenString == "New content")
+                    continuation.resume(returning: writtenString!)
                 },
             )
 
@@ -80,7 +80,7 @@ struct AppendToJournalFileTests {
             }
         }
 
-        #expect(result == true, "Should append content without extra newline when file already has trailing newline")
+        #expect(result == "New content", "Should append content without extra newline when file already has trailing newline")
     }
 
     @Test("Handles file reading error")
@@ -135,6 +135,6 @@ struct AppendToJournalFileTests {
             }
         }
 
-        #expect(result == "\nNew content", "Should append content to empty file with newline prefix")
+        #expect(result == "New content", "Should append content to empty file with newline prefix")
     }
 }

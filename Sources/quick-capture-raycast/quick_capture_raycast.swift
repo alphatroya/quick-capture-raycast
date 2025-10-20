@@ -108,7 +108,7 @@ func ensureDirectoryExists(at path: String, fileManager: FileWorker = .system) t
 func appendToJournalFile(at filePath: String, content: String, fileManager: FileWorker = .system) throws {
     if fileManager.fileExistsAtPath(filePath) {
         let currentContent = try fileManager.contentsAtPath(filePath) ?? ""
-        let needsNewline = !currentContent.hasSuffix("\n")
+        let needsNewline = !currentContent.isEmpty && !currentContent.hasSuffix("\n")
         let contentToAppend = needsNewline ? "\n" + content : content
 
         let fileHandle = try fileManager.fileHandleForWritingToPath(filePath)
