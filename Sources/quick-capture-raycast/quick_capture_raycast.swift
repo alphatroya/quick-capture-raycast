@@ -94,7 +94,6 @@ func getKnowledgeBasePath(fileManager: FileWorker = .system) -> String? {
     do {
         return try fileManager.contentsAtPath(configPath)?.trimmingCharacters(in: .whitespacesAndNewlines)
     } catch {
-        print("Warning: Could not read knowledge base path from \(configPath): \(error)")
         return nil
     }
 }
