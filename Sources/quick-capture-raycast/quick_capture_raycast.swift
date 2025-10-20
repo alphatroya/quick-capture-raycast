@@ -104,15 +104,27 @@ func appendToJournalFile(at filePath: String, content: String, fileManager: File
     }
 }
 
-func main() {
-    let arguments = CommandLine.arguments
-    var input: String
-
+func getInputFromArgumentsOrClipboard(
+    arguments: [String] = CommandLine.arguments,
+    pasteboard: PasteboardReader = .system,
+) throws -> String {
     if arguments.count > 1, !arguments[1].isEmpty {
-        input = arguments[1]
-    } else if let clipboardContent = getClipboardContent(), !clipboardContent.isEmpty {
-        input = clipboardContent
+        return arguments[1]
+    } else if let clipboardContent = getClipboardContent(pasteboard: pasteboard), !clipboardContent.isEmpty {
+        return clipboardContent
     } else {
+        throw InputError.noInputAvailable
+    }
+}
+
+// MARK: - InputError
+
+enum InputError: Error {
+    case noInputAvailable
+}
+
+func main() {
+    guard let input = try? getInputFromArgumentsOrClipboard() else {
         print("Error: No input provided and clipboard is empty")
         exit(1)
     }
