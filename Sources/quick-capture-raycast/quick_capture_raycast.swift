@@ -12,6 +12,18 @@
 import AppKit
 import Foundation
 
+// MARK: - FileHandleProtocol
+
+protocol FileHandleProtocol {
+    func seekToEndOfFile() -> UInt64
+    func write(_ data: Data)
+    func closeFile()
+}
+
+// MARK: - FileHandle + FileHandleProtocol
+
+extension FileHandle: FileHandleProtocol {}
+
 // MARK: - FileWorker
 
 struct FileWorker: Sendable {
@@ -44,6 +56,10 @@ struct FileWorker: Sendable {
 
     var writeStringToFile: @Sendable (String, String, Bool, String.Encoding) throws -> Void = { content, path, atomically, encoding in
         try content.write(toFile: path, atomically: atomically, encoding: encoding)
+    }
+
+    var fileHandleForWritingToPath: @Sendable (String) throws -> FileHandleProtocol = { path in
+        try FileHandle(forWritingTo: URL(fileURLWithPath: path))
     }
 }
 
@@ -95,8 +111,8 @@ func appendToJournalFile(at filePath: String, content: String, fileManager: File
         let needsNewline = !currentContent.hasSuffix("\n")
         let contentToAppend = needsNewline ? "\n" + content : content
 
-        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: filePath))
-        fileHandle.seekToEndOfFile()
+        let fileHandle = try fileManager.fileHandleForWritingToPath(filePath)
+        _ = fileHandle.seekToEndOfFile()
         fileHandle.write(contentToAppend.data(using: .utf8)!)
         fileHandle.closeFile()
     } else {
@@ -128,7 +144,6 @@ func main() {
         print("Error: No input provided and clipboard is empty")
         exit(1)
     }
-
     guard let knowledgeBase = getKnowledgeBasePath() else {
         print("Error: Could not determine knowledge base path")
         exit(1)
