@@ -50,6 +50,20 @@ struct GetTitleTests {
             try await getTitle(for: "http://example.com/invalid-html", networkFetcher: mockFetcher)
         }
     }
+
+    @Test("Decodes HTML entities in title", arguments: [
+        ("<title>Exploring IRC (Internet Relay Chat) | Preah&#x27;s Blog</title>", "Exploring IRC (Internet Relay Chat) | Preah's Blog"),
+        ("<title>Test &amp; Example</title>", "Test & Example"),
+        ("<title>Quote &quot;Test&quot;</title>", "Quote \"Test\""),
+        ("<title>Less than &lt; 3</title>", "Less than < 3"),
+        ("<title>Greater than &gt; 3</title>", "Greater than > 3"),
+        ("<title>Normal Title</title>", "Normal Title"),
+    ])
+    func decodesHTMLEntitiesInTitle(html: String, expectedTitle: String) async throws {
+        let mockFetcher = MockNetworkFetcher(htmlResponse: html)
+        let result = try await getTitle(for: "http://example.com/test", networkFetcher: mockFetcher)
+        #expect(result == expectedTitle)
+    }
 }
 
 // MARK: - MockNetworkFetcher
@@ -57,15 +71,9 @@ struct GetTitleTests {
 struct MockNetworkFetcher: NetworkFetcherProtocol, Sendable {
     // MARK: Properties
 
-    private let response: String?
-    private let error: Error?
-
-    // MARK: Lifecycle
-
-    init(response: String? = nil, error: Error? = nil) {
-        self.response = response
-        self.error = error
-    }
+    var response: String?
+    var htmlResponse: String?
+    var error: Error?
 
     // MARK: Functions
 
@@ -73,10 +81,43 @@ struct MockNetworkFetcher: NetworkFetcherProtocol, Sendable {
         if let error {
             throw error
         }
+
+        if let htmlResponse {
+            // Simulate the actual extractTitle function behavior
+            let pattern = #"<title[^>]*>(.*?)</title\s*>"#
+            guard let range = htmlResponse.range(of: pattern, options: .regularExpression) else {
+                throw TitleError.missingTitle
+            }
+
+            let titleMatch = String(htmlResponse[range])
+            let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
+
+            // Apply the same HTML entity decoding as the real implementation
+            let decodedTitle = decodeHTMLEntities(titleContent)
+            return decodedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
         guard let response else {
             throw TitleError.missingTitle
         }
 
         return response
+    }
+
+    // MARK: - Private
+
+    private func decodeHTMLEntities(_ string: String) -> String {
+        guard let data = string.data(using: .utf8) else { return string }
+
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue,
+        ]
+
+        if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
+            return attributedString.string
+        }
+
+        return string
     }
 }

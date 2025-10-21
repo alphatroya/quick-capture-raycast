@@ -183,7 +183,23 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
 
         let titleMatch = String(html[range])
         let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
-        return titleContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        let decodedTitle = decodeHTMLEntities(titleContent)
+        return decodedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func decodeHTMLEntities(_ string: String) -> String {
+        guard let data = string.data(using: .utf8) else { return string }
+
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue,
+        ]
+
+        if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
+            return attributedString.string
+        }
+
+        return string
     }
 }
 
