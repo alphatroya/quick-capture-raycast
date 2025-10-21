@@ -119,6 +119,104 @@ func appendToJournalFile(at filePath: String, content: String, fileManager: File
     }
 }
 
+func isURL(_ string: String) -> Bool {
+    guard let url = URL(string: string) else { return false }
+
+    return url.scheme == "http" || url.scheme == "https"
+}
+
+// MARK: - NetworkFetcherProtocol
+
+protocol NetworkFetcherProtocol: Sendable {
+    func fetchTitle(from url: String) async throws -> String
+}
+
+// MARK: - TitleError
+
+enum TitleError: Error, Sendable {
+    case missingTitle
+    case invalidHTML
+    case networkError(Error)
+}
+
+// MARK: - URLSessionNetworkFetcher
+
+struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
+    // MARK: Properties
+
+    private let session: URLSession
+
+    // MARK: Lifecycle
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    // MARK: Functions
+
+    func fetchTitle(from url: String) async throws -> String {
+        guard let url = URL(string: url) else {
+            throw URLError(.badURL)
+        }
+        guard url.scheme == "http" || url.scheme == "https" else {
+            throw URLError(.unsupportedURL)
+        }
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw URLError(.resourceUnavailable)
+        }
+
+        let html = String(data: data, encoding: .utf8) ?? ""
+        return try extractTitle(from: html)
+    }
+
+    private func extractTitle(from html: String) throws -> String {
+        let pattern = #"<title[^>]*>(.*?)</title\s*>"#
+        guard let range = html.range(of: pattern, options: .regularExpression) else {
+            throw TitleError.missingTitle
+        }
+
+        let titleMatch = String(html[range])
+        let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
+        return titleContent.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+// MARK: - SystemNetworkFetcher
+
+enum SystemNetworkFetcher {
+    static let system: NetworkFetcherProtocol = URLSessionNetworkFetcher()
+}
+
+func getTitle(for url: String, networkFetcher: NetworkFetcherProtocol = SystemNetworkFetcher.system) async throws -> String {
+    try await networkFetcher.fetchTitle(from: url)
+}
+
+func markdownURLIfNeeded(
+    _ url: String,
+    titleFetcher: NetworkFetcherProtocol = SystemNetworkFetcher.system,
+) async -> String {
+    guard isURL(url) else { return url }
+
+    let finalTitle: String
+    do {
+        finalTitle = try await getTitle(for: url, networkFetcher: titleFetcher)
+    } catch {
+        return url
+    }
+
+    guard !finalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        return url
+    }
+
+    return "[\(finalTitle)](\(url))"
+}
+
 func getInputFromArgumentsOrClipboard(
     arguments: [String] = CommandLine.arguments,
     pasteboard: PasteboardReader = .system,
@@ -138,7 +236,8 @@ enum InputError: Error {
     case noInputAvailable
 }
 
-func main() {
+@MainActor
+func main() async {
     guard let input = try? getInputFromArgumentsOrClipboard() else {
         print("Error: No input provided and clipboard is empty")
         exit(1)
@@ -147,6 +246,8 @@ func main() {
         print("Error: Could not determine knowledge base path")
         exit(1)
     }
+
+    let processedInput = await markdownURLIfNeeded(input)
 
     let today = formatDate("yyyy_MM_dd")
     let fileName = "\(today).md"
@@ -157,7 +258,7 @@ func main() {
         try ensureDirectoryExists(at: journalsPath)
 
         let timeString = formatDate("HH:mm")
-        let lineToAppend = "- TODO **\(timeString)** \(input)\n"
+        let lineToAppend = "- TODO **\(timeString)** \(processedInput)\n"
 
         try appendToJournalFile(at: filePath, content: lineToAppend)
 
@@ -168,4 +269,4 @@ func main() {
     }
 }
 
-main()
+await main()
