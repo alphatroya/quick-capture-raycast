@@ -83,18 +83,7 @@ struct MockNetworkFetcher: NetworkFetcherProtocol, Sendable {
         }
 
         if let htmlResponse {
-            // Simulate the actual extractTitle function behavior
-            let pattern = #"<title[^>]*>(.*?)</title\s*>"#
-            guard let range = htmlResponse.range(of: pattern, options: .regularExpression) else {
-                throw TitleError.missingTitle
-            }
-
-            let titleMatch = String(htmlResponse[range])
-            let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
-
-            // Apply the same HTML entity decoding as the real implementation
-            let decodedTitle = decodeHTMLEntities(titleContent)
-            return decodedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            return try extractTitle(from: htmlResponse)
         }
 
         guard let response else {
@@ -102,22 +91,5 @@ struct MockNetworkFetcher: NetworkFetcherProtocol, Sendable {
         }
 
         return response
-    }
-
-    // MARK: - Private
-
-    private func decodeHTMLEntities(_ string: String) -> String {
-        guard let data = string.data(using: .utf8) else { return string }
-
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue,
-        ]
-
-        if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
-            return attributedString.string
-        }
-
-        return string
     }
 }

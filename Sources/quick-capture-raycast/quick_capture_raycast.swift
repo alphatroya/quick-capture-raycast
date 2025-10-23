@@ -129,6 +129,37 @@ func isURL(_ string: String) -> Bool {
 
 protocol NetworkFetcherProtocol: Sendable {
     func fetchTitle(from url: String) async throws -> String
+    func extractTitle(from html: String) throws -> String
+    func decodeHTMLEntities(_ string: String) -> String
+}
+
+extension NetworkFetcherProtocol {
+    func extractTitle(from html: String) throws -> String {
+        let pattern = #"<title[^>]*>(.*?)</title\s*>"#
+        guard let range = html.range(of: pattern, options: .regularExpression) else {
+            throw TitleError.missingTitle
+        }
+
+        let titleMatch = String(html[range])
+        let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
+        let decodedTitle = decodeHTMLEntities(titleContent)
+        return decodedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func decodeHTMLEntities(_ string: String) -> String {
+        guard let data = string.data(using: .utf8) else { return string }
+
+        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
+            .documentType: NSAttributedString.DocumentType.html,
+            .characterEncoding: String.Encoding.utf8.rawValue,
+        ]
+
+        if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
+            return attributedString.string
+        }
+
+        return string
+    }
 }
 
 // MARK: - TitleError
@@ -173,33 +204,6 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
 
         let html = String(data: data, encoding: .utf8) ?? ""
         return try extractTitle(from: html)
-    }
-
-    private func extractTitle(from html: String) throws -> String {
-        let pattern = #"<title[^>]*>(.*?)</title\s*>"#
-        guard let range = html.range(of: pattern, options: .regularExpression) else {
-            throw TitleError.missingTitle
-        }
-
-        let titleMatch = String(html[range])
-        let titleContent = titleMatch.replacingOccurrences(of: #"<title[^>]*>|</title\s*>"#, with: "", options: .regularExpression)
-        let decodedTitle = decodeHTMLEntities(titleContent)
-        return decodedTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func decodeHTMLEntities(_ string: String) -> String {
-        guard let data = string.data(using: .utf8) else { return string }
-
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue,
-        ]
-
-        if let attributedString = try? NSAttributedString(data: data, options: options, documentAttributes: nil) {
-            return attributedString.string
-        }
-
-        return string
     }
 }
 
@@ -252,37 +256,40 @@ enum InputError: Error {
     case noInputAvailable
 }
 
-@MainActor
-func main() async {
-    guard let input = try? getInputFromArgumentsOrClipboard() else {
-        print("Error: No input provided and clipboard is empty")
-        exit(1)
-    }
-    guard let knowledgeBase = getKnowledgeBasePath() else {
-        print("Error: Could not determine knowledge base path")
-        exit(1)
-    }
+// MARK: - App
 
-    let processedInput = await markdownURLIfNeeded(input)
+enum App {
+    static func main() async {
+        guard let input = try? getInputFromArgumentsOrClipboard() else {
+            print("Error: No input provided and clipboard is empty")
+            exit(1)
+        }
+        guard let knowledgeBase = getKnowledgeBasePath() else {
+            print("Error: Could not determine knowledge base path")
+            exit(1)
+        }
 
-    let today = formatDate("yyyy_MM_dd")
-    let fileName = "\(today).md"
-    let journalsPath = (knowledgeBase as NSString).appendingPathComponent("journals")
-    let filePath = (journalsPath as NSString).appendingPathComponent(fileName)
+        let processedInput = await markdownURLIfNeeded(input)
 
-    do {
-        try ensureDirectoryExists(at: journalsPath)
+        let today = formatDate("yyyy_MM_dd")
+        let fileName = "\(today).md"
+        let journalsPath = (knowledgeBase as NSString).appendingPathComponent("journals")
+        let filePath = (journalsPath as NSString).appendingPathComponent(fileName)
 
-        let timeString = formatDate("HH:mm")
-        let lineToAppend = "- TODO **\(timeString)** \(processedInput)\n"
+        do {
+            try ensureDirectoryExists(at: journalsPath)
 
-        try appendToJournalFile(at: filePath, content: lineToAppend)
+            let timeString = formatDate("HH:mm")
+            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\n"
 
-        print("Successfully added to journal: \(filePath)")
-    } catch {
-        print("Error: \(error)")
-        exit(1)
+            try appendToJournalFile(at: filePath, content: lineToAppend)
+
+            print("Successfully added to journal: \(filePath)")
+        } catch {
+            print("Error: \(error)")
+            exit(1)
+        }
     }
 }
 
-await main()
+ await App.main()
