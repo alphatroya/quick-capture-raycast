@@ -8,6 +8,7 @@
 // Optional parameters:
 // @raycast.icon 📝
 // @raycast.argument1 { "type": "text", "optional": true, "placeholder": "What's on your mind?" }
+// @raycast.argument2 { "type": "text", "optional": true, "placeholder": "Tags (comma separated)" }
 
 import AppKit
 import Foundation
@@ -237,17 +238,36 @@ func markdownURLIfNeeded(
     return "[\(finalTitle)](\(url))"
 }
 
+func parseTags(from input: String) -> String? {
+    let components = input.components(separatedBy: ",")
+    let tags = components.map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+        .map { tag in
+            if tag.contains(" ") {
+                "#[[\(tag)]]"
+            } else {
+                "#\(tag)"
+            }
+        }
+
+    return tags.isEmpty ? nil : tags.joined(separator: " ")
+}
+
 func getInputFromArgumentsOrClipboard(
     arguments: [String] = CommandLine.arguments,
     pasteboard: PasteboardReader = .system,
-) throws -> String {
+) throws -> (input: String, tags: String?) {
+    let input: String
     if arguments.count > 1, !arguments[1].isEmpty {
-        return arguments[1]
+        input = arguments[1]
     } else if let clipboardContent = getClipboardContent(pasteboard: pasteboard), !clipboardContent.isEmpty {
-        return clipboardContent
+        input = clipboardContent
     } else {
         throw InputError.noInputAvailable
     }
+
+    let tags = arguments.count > 2 ? parseTags(from: arguments[2]) : nil
+    return (input, tags)
 }
 
 // MARK: - InputError
@@ -260,7 +280,7 @@ enum InputError: Error {
 
 enum App {
     static func main() async {
-        guard let input = try? getInputFromArgumentsOrClipboard() else {
+        guard let (input, tags) = try? getInputFromArgumentsOrClipboard() else {
             print("Error: No input provided and clipboard is empty")
             exit(1)
         }
@@ -280,7 +300,8 @@ enum App {
             try ensureDirectoryExists(at: journalsPath)
 
             let timeString = formatDate("HH:mm")
-            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\n"
+            let tagsString = tags.map { " \($0)" } ?? ""
+            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\(tagsString)\n"
 
             try appendToJournalFile(at: filePath, content: lineToAppend)
 
@@ -292,4 +313,4 @@ enum App {
     }
 }
 
- await App.main()
+await App.main()

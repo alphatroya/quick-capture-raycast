@@ -13,7 +13,19 @@ struct GetInputFromArgumentsOrClipboardTests {
 
         let result = try getInputFromArgumentsOrClipboard(arguments: arguments, pasteboard: mockPasteboard)
 
-        #expect(result == "Hello from args", "Should return command line argument")
+        #expect(result.input == "Hello from args", "Should return command line argument")
+        #expect(result.tags == nil, "Should have no tags when only input provided")
+    }
+
+    @Test("Returns command line argument and tags when both provided")
+    func returnsCommandLineArgumentAndTags() throws {
+        let arguments = ["program", "Hello from args", "work,personal"]
+        let mockPasteboard = PasteboardReader.mock("Clipboard content")
+
+        let result = try getInputFromArgumentsOrClipboard(arguments: arguments, pasteboard: mockPasteboard)
+
+        #expect(result.input == "Hello from args", "Should return command line argument")
+        #expect(result.tags == "#work #personal", "Should parse tags correctly")
     }
 
     @Test("Returns clipboard content when no command line argument provided")
@@ -23,7 +35,19 @@ struct GetInputFromArgumentsOrClipboardTests {
 
         let result = try getInputFromArgumentsOrClipboard(arguments: arguments, pasteboard: mockPasteboard)
 
-        #expect(result == "Clipboard content", "Should return clipboard content")
+        #expect(result.input == "Clipboard content", "Should return clipboard content")
+        #expect(result.tags == nil, "Should have no tags when no tags argument provided")
+    }
+
+    @Test("Returns clipboard content and tags when tags argument provided")
+    func returnsClipboardContentAndTags() throws {
+        let arguments = ["program", "", "work,personal"]
+        let mockPasteboard = PasteboardReader.mock("Clipboard content")
+
+        let result = try getInputFromArgumentsOrClipboard(arguments: arguments, pasteboard: mockPasteboard)
+
+        #expect(result.input == "Clipboard content", "Should return clipboard content")
+        #expect(result.tags == "#work #personal", "Should parse tags when provided with clipboard")
     }
 
     @Test("Returns clipboard content when empty command line argument provided")
@@ -33,7 +57,8 @@ struct GetInputFromArgumentsOrClipboardTests {
 
         let result = try getInputFromArgumentsOrClipboard(arguments: arguments, pasteboard: mockPasteboard)
 
-        #expect(result == "Clipboard content", "Should return clipboard content when argument is empty")
+        #expect(result.input == "Clipboard content", "Should return clipboard content when argument is empty")
+        #expect(result.tags == nil, "Should have no tags when no tags argument provided")
     }
 
     @Test("Throws error when no input and empty clipboard")
