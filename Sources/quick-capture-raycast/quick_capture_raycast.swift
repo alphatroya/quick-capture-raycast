@@ -12,6 +12,7 @@
 
 import AppKit
 import Foundation
+import LinkPresentation
 
 // MARK: - FileHandleProtocol
 
@@ -129,7 +130,7 @@ func isURL(_ string: String) -> Bool {
 // MARK: - NetworkFetcherProtocol
 
 protocol NetworkFetcherProtocol: Sendable {
-    func fetchTitle(from url: String) async throws -> String
+    func fetchTitleAndFinalURL(from url: String) async throws -> (title: String, finalURL: String)
     func extractTitle(from html: String) throws -> String
     func decodeHTMLEntities(_ string: String) -> String
 }
@@ -177,6 +178,7 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
     // MARK: Properties
 
     private let session: URLSession
+    private let maxRedirects = 10
 
     // MARK: Lifecycle
 
@@ -186,7 +188,7 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
 
     // MARK: Functions
 
-    func fetchTitle(from url: String) async throws -> String {
+    func fetchTitleAndFinalURL(from url: String) async throws -> (title: String, finalURL: String) {
         guard let url = URL(string: url) else {
             throw URLError(.badURL)
         }
@@ -194,17 +196,38 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
             throw URLError(.unsupportedURL)
         }
 
-        let (data, response) = try await session.data(from: url)
+        let metadataProvider = LPMetadataProvider()
+        let metadata = try await metadataProvider.startFetchingMetadata(for: url)
+        return (title: metadata.title ?? "", finalURL: (metadata.url ?? url).absoluteString)
+    }
+
+    private func followRedirects(from url: URL, redirectCount: Int = 0) async throws -> URL {
+        guard redirectCount < maxRedirects else {
+            throw URLError(.cannotFindHost)
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+
+        let (_, response) = try await session.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw URLError(.badServerResponse)
-        }
-        guard httpResponse.statusCode == 200 else {
-            throw URLError(.resourceUnavailable)
+            return url
         }
 
-        let html = String(data: data, encoding: .utf8) ?? ""
-        return try extractTitle(from: html)
+        switch httpResponse.statusCode {
+        case 301, 302, 307, 308:
+            guard let location = httpResponse.value(forHTTPHeaderField: "Location"),
+                  let redirectURL = URL(string: location, relativeTo: url)
+            else {
+                return url
+            }
+
+            return try await followRedirects(from: redirectURL, redirectCount: redirectCount + 1)
+
+        default:
+            return url
+        }
     }
 }
 
@@ -214,10 +237,6 @@ enum SystemNetworkFetcher {
     static let system: NetworkFetcherProtocol = URLSessionNetworkFetcher()
 }
 
-func getTitle(for url: String, networkFetcher: NetworkFetcherProtocol = SystemNetworkFetcher.system) async throws -> String {
-    try await networkFetcher.fetchTitle(from: url)
-}
-
 func markdownURLIfNeeded(
     _ url: String,
     titleFetcher: NetworkFetcherProtocol = SystemNetworkFetcher.system,
@@ -225,8 +244,11 @@ func markdownURLIfNeeded(
     guard isURL(url) else { return url }
 
     let finalTitle: String
+    let finalURL: String
     do {
-        finalTitle = try await getTitle(for: url, networkFetcher: titleFetcher)
+        let (title, url) = try await titleFetcher.fetchTitleAndFinalURL(from: url)
+        finalTitle = title
+        finalURL = url
     } catch {
         return url
     }
@@ -235,7 +257,7 @@ func markdownURLIfNeeded(
         return url
     }
 
-    return "[\(finalTitle)](\(url))"
+    return "[\(finalTitle)](\(finalURL))"
 }
 
 func parseTags(from input: String) -> String? {

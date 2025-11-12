@@ -73,4 +73,18 @@ struct MarkdownURLTests {
         let result = await markdownURLIfNeeded(url, titleFetcher: mockFetcher)
         #expect(result == url, "Should return raw URL when title is empty")
     }
+
+    @Test("Uses final URL in markdown when redirect occurs")
+    func usesFinalURLInMarkdownWhenRedirectOccurs() async {
+        let mockFetcher = MockNetworkFetcher(response: "Final Page Title", finalURL: "https://final.com/page")
+        let result = await markdownURLIfNeeded("http://short.link/abc", titleFetcher: mockFetcher)
+        #expect(result == "[Final Page Title](https://final.com/page)")
+    }
+
+    @Test("Handles HTTP to HTTPS redirect")
+    func handlesHTTPToHTTPSRedirect() async {
+        let mockFetcher = MockNetworkFetcher(response: "Secure Page Title", finalURL: "https://example.com/secure")
+        let result = await markdownURLIfNeeded("http://example.com/secure", titleFetcher: mockFetcher)
+        #expect(result == "[Secure Page Title](https://example.com/secure)")
+    }
 }
