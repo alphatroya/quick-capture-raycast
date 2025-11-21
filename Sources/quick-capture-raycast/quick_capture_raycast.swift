@@ -245,6 +245,12 @@ func getInputFromArgumentsOrClipboard(
     return (input, tags)
 }
 
+func formatJournalEntry(content: String, userTags: String?, timeString: String) -> String {
+    let defaultTag = " #[[raycast quick capture]]"
+    let tagsString = userTags.map { " \($0)" } ?? ""
+    return "- TODO **\(timeString)** \(content)\(tagsString)\(defaultTag)\n"
+}
+
 // MARK: - InputError
 
 enum InputError: Error {
@@ -274,9 +280,8 @@ enum App {
         do {
             try ensureDirectoryExists(at: journalsPath)
 
-            let timeString = formatDate("HH:mm")
-            let tagsString = tags.map { " \($0)" } ?? ""
-            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\(tagsString)\n"
+            let timeString = formatDate("HH:mm", date: .now)
+            let lineToAppend = formatJournalEntry(content: processedInput, userTags: tags, timeString: timeString)
 
             try appendToJournalFile(at: filePath, content: lineToAppend)
 
