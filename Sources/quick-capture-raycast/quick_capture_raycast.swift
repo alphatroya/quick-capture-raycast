@@ -175,19 +175,6 @@ enum TitleError: Error, Sendable {
 // MARK: - URLSessionNetworkFetcher
 
 struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
-    // MARK: Properties
-
-    private let session: URLSession
-    private let maxRedirects = 10
-
-    // MARK: Lifecycle
-
-    init(session: URLSession = .shared) {
-        self.session = session
-    }
-
-    // MARK: Functions
-
     func fetchTitleAndFinalURL(from url: String) async throws -> (title: String, finalURL: String) {
         guard let url = URL(string: url) else {
             throw URLError(.badURL)
@@ -199,35 +186,6 @@ struct URLSessionNetworkFetcher: NetworkFetcherProtocol, Sendable {
         let metadataProvider = LPMetadataProvider()
         let metadata = try await metadataProvider.startFetchingMetadata(for: url)
         return (title: metadata.title ?? "", finalURL: (metadata.url ?? url).absoluteString)
-    }
-
-    private func followRedirects(from url: URL, redirectCount: Int = 0) async throws -> URL {
-        guard redirectCount < maxRedirects else {
-            throw URLError(.cannotFindHost)
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "HEAD"
-
-        let (_, response) = try await session.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            return url
-        }
-
-        switch httpResponse.statusCode {
-        case 301, 302, 307, 308:
-            guard let location = httpResponse.value(forHTTPHeaderField: "Location"),
-                  let redirectURL = URL(string: location, relativeTo: url)
-            else {
-                return url
-            }
-
-            return try await followRedirects(from: redirectURL, redirectCount: redirectCount + 1)
-
-        default:
-            return url
-        }
     }
 }
 
