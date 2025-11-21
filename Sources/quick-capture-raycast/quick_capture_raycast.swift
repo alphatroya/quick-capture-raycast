@@ -243,21 +243,16 @@ func markdownURLIfNeeded(
 ) async -> String {
     guard isURL(url) else { return url }
 
-    let finalTitle: String
-    let finalURL: String
     do {
-        let (title, url) = try await titleFetcher.fetchTitleAndFinalURL(from: url)
-        finalTitle = title
-        finalURL = url
+        let (finalTitle, finalURL) = try await titleFetcher.fetchTitleAndFinalURL(from: url)
+        guard !finalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return url
+        }
+
+        return "[\(finalTitle)](\(finalURL))"
     } catch {
         return url
     }
-
-    guard !finalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        return url
-    }
-
-    return "[\(finalTitle)](\(finalURL))"
 }
 
 func parseTags(from input: String) -> String? {
