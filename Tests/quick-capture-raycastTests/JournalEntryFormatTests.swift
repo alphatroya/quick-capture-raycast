@@ -30,11 +30,15 @@ struct JournalEntryFormatTests {
         #expect(result.contains("#personal"), "Should contain user tag #personal")
         #expect(result.contains("Test content"), "Should contain the content")
         // Verify order: content, then user tags, then default tag
-        let contentIndex = result.range(of: "Test content")!.upperBound
-        let workIndex = result.range(of: "#work")!.lowerBound
-        let defaultIndex = result.range(of: "#[[raycast quick capture]]")!.lowerBound
-        #expect(contentIndex < workIndex, "Content should come before user tags")
-        #expect(workIndex < defaultIndex, "User tags should come before default tag")
+        guard let contentRange = result.range(of: "Test content"),
+              let workRange = result.range(of: "#work"),
+              let defaultRange = result.range(of: "#[[raycast quick capture]]")
+        else {
+            Issue.record("Failed to find expected strings in result")
+            return
+        }
+        #expect(contentRange.upperBound < workRange.lowerBound, "Content should come before user tags")
+        #expect(workRange.lowerBound < defaultRange.lowerBound, "User tags should come before default tag")
     }
     
     @Test("Journal entry with URL includes default tag")
