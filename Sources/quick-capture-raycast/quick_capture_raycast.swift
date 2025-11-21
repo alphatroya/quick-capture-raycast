@@ -323,7 +323,8 @@ enum App {
 
             let timeString = formatDate("HH:mm")
             let tagsString = tags.map { " \($0)" } ?? ""
-            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\(tagsString)\n"
+            let defaultTag = " #[[raycast quick capture]]"
+            let lineToAppend = "- TODO **\(timeString)** \(processedInput)\(tagsString)\(defaultTag)\n"
 
             try appendToJournalFile(at: filePath, content: lineToAppend)
 
