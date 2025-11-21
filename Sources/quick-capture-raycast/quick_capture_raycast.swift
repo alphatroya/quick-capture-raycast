@@ -245,10 +245,8 @@ func getInputFromArgumentsOrClipboard(
     return (input, tags)
 }
 
-private let defaultTag = " #[[raycast quick capture]]"
-
-func formatJournalEntry(content: String, userTags: String?, date: Date = Date()) -> String {
-    let timeString = formatDate("HH:mm", date: date)
+func formatJournalEntry(content: String, userTags: String?, timeString: String) -> String {
+    let defaultTag = " #[[raycast quick capture]]"
     let tagsString = userTags.map { " \($0)" } ?? ""
     return "- TODO **\(timeString)** \(content)\(tagsString)\(defaultTag)\n"
 }
@@ -282,7 +280,8 @@ enum App {
         do {
             try ensureDirectoryExists(at: journalsPath)
 
-            let lineToAppend = formatJournalEntry(content: processedInput, userTags: tags)
+            let timeString = formatDate("HH:mm", date: .now)
+            let lineToAppend = formatJournalEntry(content: processedInput, userTags: tags, timeString: timeString)
 
             try appendToJournalFile(at: filePath, content: lineToAppend)
 
