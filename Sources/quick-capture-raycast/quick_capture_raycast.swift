@@ -245,10 +245,11 @@ func getInputFromArgumentsOrClipboard(
     return (input, tags)
 }
 
+private let defaultTag = " #[[raycast quick capture]]"
+
 func formatJournalEntry(content: String, userTags: String?, date: Date = Date()) -> String {
     let timeString = formatDate("HH:mm", date: date)
     let tagsString = userTags.map { " \($0)" } ?? ""
-    let defaultTag = " #[[raycast quick capture]]"
     return "- TODO **\(timeString)** \(content)\(tagsString)\(defaultTag)\n"
 }
 
